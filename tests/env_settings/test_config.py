@@ -19,7 +19,7 @@ def test_error_handling_enum_values():
     assert ErrorHandling.IGNORE.value == 'ignore'
 
 
-@pytest.mark.parametrize("value, expected", [
+@pytest.mark.parametrize('value, expected', [
     ('exit', ErrorHandling.EXIT),
     ('raise', ErrorHandling.RAISE),
     ('print', ErrorHandling.PRINT),
@@ -33,7 +33,7 @@ def test_error_handling_from_value_valid(value, expected):
     assert result == expected
 
 
-@pytest.mark.parametrize("invalid_value", ['invalid', '', None, 123, True, ('exit',)])
+@pytest.mark.parametrize('invalid_value', ['invalid', '', None, 123, True, ('exit',)])
 def test_error_handling_from_value_invalid(invalid_value):
     """Проверка обработки недопустимых значений"""
     with pytest.raises(ValueError):
@@ -102,8 +102,8 @@ def test_configure_env_generator_pattern():
 
 def test_configure_invalid_error_messages_type():
     """Проверка обработки неверного типа для error_messages"""
-    with pytest.raises(TypeError, match="error_messages должен быть словарем"):
-        global_config.configure(error_messages="invalid type")
+    with pytest.raises(TypeError, match='error_messages должен быть словарем'):
+        global_config.configure(error_messages='invalid type')
 
 
 def test_configure_invalid_error_handling():

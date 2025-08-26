@@ -34,7 +34,7 @@ def test_configure_calls_settings_config(mock_settings_config):
     mock_settings_config.configure.assert_called_once_with(**test_params)
 
 
-@pytest.mark.parametrize("params", [
+@pytest.mark.parametrize('params', [
     {},
     {'option1': 'value1'},
     {'setting1': True, 'setting2': 42}
