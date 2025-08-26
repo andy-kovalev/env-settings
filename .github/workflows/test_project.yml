@@ -1,0 +1,47 @@
+name: Test project on push
+
+on: [push, pull_request]
+
+jobs:
+  flake8-lint:
+    runs-on: ubuntu-latest
+    name: flake8(bugbear) Lint
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13.7"
+
+      - name: Flake8 Lint
+        uses: py-actions/flake8@v2
+        with:
+          flake8-version: "7.3.0"
+          exclude: "venv,.env,.run,migrations"
+          # max-complexity: "10"
+          max-line-length: "120"
+          path: "."
+          plugins: "flake8-bugbear==24.12.12"
+
+  tests:
+    strategy:
+      matrix:
+        version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    name: pytest Test
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.version }}
+
+      - name: Set up Python dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Pytest Test
+        run: python3 -m pytest --cov=src.env_settings --cov-report=term
