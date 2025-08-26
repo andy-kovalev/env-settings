@@ -163,7 +163,7 @@ def test_generate_env_file_complex_structure(setup_files, tmp_path):
 
 # Тест с моком для изоляции файловой системы
 @patch('builtins.open', new_callable=mock_open)
-@patch('pathlib.Path.walk')
+@patch('src.env_settings.generator.walk')
 def test_generate_env_file_calls(mock_walk, mock_open, tmp_path):
     # Настраиваем моки
     mock_walk.return_value = [(Path('project'), ['subdir'], ['settings.py'])]

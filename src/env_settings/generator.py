@@ -4,7 +4,7 @@
 Содержит функции для автоматического создания .env-файла
 на основе анализа файлов настроек
 """
-from os import path
+from os import path, walk
 from pathlib import Path
 from re import MULTILINE
 from re import compile
@@ -92,7 +92,7 @@ def generate_env_file(new_env_filename: str, settings_filename: str = 'settings.
     """
     def get_settings(dirname):
         result_values = []
-        for root, _, files in dirname.walk(top_down=True):
+        for root, _, files in walk(dirname, topdown=True):
             for name in [n for n in files if n == settings_filename]:
                 _dirs = [x for x in str(root).split(path.sep) if x not in str(dirname).split(path.sep)]
                 if sub_modules_path and include_sub_modules:
