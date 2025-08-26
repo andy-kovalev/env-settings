@@ -158,7 +158,7 @@ class TestGetParams:
         # Файл не существует
         with patch('src.env_settings.utils._env_param_error') as mock_error:
             get_file_env_param("STR_PARAM")
-            mock_error.assert_called_with(f"File error: STR_PARAM=test_value")
+            mock_error.assert_called_with("File error: STR_PARAM=test_value")
 
         # Файл не обязателен
         assert get_file_env_param("NEW_PARAM", file_mast_exist=False, dir_mast_exist=False) is None
