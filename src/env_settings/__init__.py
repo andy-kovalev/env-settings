@@ -17,7 +17,7 @@ def configure(**kwargs):
     :example:
     configure(
                 error_messages={
-                    'required': "Должен быть задан",
+                    'required': 'Должен быть задан',
                     'integer': 'Должен быть числом',
                     'float': 'Должен быть дробным числом',
                     'file': 'Не найден файл',

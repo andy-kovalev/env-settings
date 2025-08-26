@@ -62,7 +62,7 @@ class _Config:
         """Обновление параметров конфигурации"""
         if error_messages:
             if not isinstance(error_messages, dict):
-                raise TypeError("error_messages должен быть словарем")
+                raise TypeError('error_messages должен быть словарем')
             self._error_messages.update(error_messages)
 
         if error_handling:

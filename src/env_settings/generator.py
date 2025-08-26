@@ -109,4 +109,4 @@ def generate_env_file(new_env_filename: str, settings_filename: str = 'settings.
     with open(new_env_filename, mode='w', encoding='utf-8') as env_file:
         for index, value in enumerate(settings_values):
             is_last_iteration = (index == len(settings_values) - 1)
-            env_file.write(f'{value}{'\n' if not is_last_iteration else ''}')
+            env_file.write(f"{value}{'\n' if not is_last_iteration else ''}")
