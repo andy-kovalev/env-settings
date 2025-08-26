@@ -4,6 +4,7 @@
 
 from os import makedirs, path, getenv
 from sys import maxsize
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -48,7 +49,7 @@ def _create_directory(name: str, is_filename: bool = False):
             makedirs(directory)
 
 
-def get_str_env_param(name: str, required: bool = False, default: str = None) -> str | None:
+def get_str_env_param(name: str, required: bool = False, default: str = None) -> Optional[str]:
     """
     Получает значение из переменной окружения *name*
 
@@ -67,7 +68,7 @@ def get_str_env_param(name: str, required: bool = False, default: str = None) ->
     return result
 
 
-def get_int_env_param(name: str, required: bool = False, default: int = None) -> int | None:
+def get_int_env_param(name: str, required: bool = False, default: int = None) -> Optional[int]:
     """
     Получает *int* значение из переменной окружения *name*
 
@@ -89,7 +90,7 @@ def get_int_env_param(name: str, required: bool = False, default: int = None) ->
         return None
 
 
-def get_float_env_param(name: str, required: bool = False, default: float = None) -> float | None:
+def get_float_env_param(name: str, required: bool = False, default: float = None) -> Optional[float]:
     """
     Получает *float* значение из переменной окружения *name*
 
@@ -129,7 +130,7 @@ def get_bool_env_param(name: str, required: bool = False, default: bool = False)
 
 
 def get_file_env_param(name: str, required: bool = False, default: str = None, file_mast_exist: bool = True,
-                       dir_mast_exist: bool = True) -> str | None:
+                       dir_mast_exist: bool = True) -> Optional[str]:
     """
     Получает значение пути к файлу из переменной окружения *name*
 
@@ -167,7 +168,7 @@ def get_file_env_param(name: str, required: bool = False, default: str = None, f
             return result
 
 
-def get_filedir_env_param(name: str, required: bool = False, default=None, dir_mast_exist=True) -> str | None:
+def get_filedir_env_param(name: str, required: bool = False, default=None, dir_mast_exist=True) -> Optional[str]:
     """
     Получает значение пути к файловому каталогу из переменной окружения *name*
 
@@ -197,7 +198,7 @@ def get_filedir_env_param(name: str, required: bool = False, default=None, dir_m
         return result
 
 
-def get_value_from_string(delimited_string: str, index: int = 1, separator: str = ';') -> str | None:
+def get_value_from_string(delimited_string: str, index: int = 1, separator: str = ';') -> Optional[str]:
     """
     Возвращает значение из строки с разделителями по указанному индексу
 
