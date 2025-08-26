@@ -12,7 +12,7 @@ from re import compile
 from .config import config
 
 
-def _get_settings_values(settings_file, exclude_params: tuple[str] = None) -> list:
+def _get_settings_values(settings_file, exclude_params: tuple[str] = None) -> list[str]:
     """
     Извлекает параметры переменных окружения из файла настроек.
 
