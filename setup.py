@@ -1,13 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-setup(
-    name="env-settings",                    # Имя для pip install
-    version="0.0.2",                        # Версия
-    author="Andy Kovalev",
-    description="Universal module for using Python program settings based on environment variables",
-    package_dir={"": "src"},                # Где искать пакеты
-    packages=find_packages(where="src"),    # Автопоиск пакетов в src
-    python_requires=">=3.9",                # Совместимость
-    install_requires=['python-dotenv'],     # Зависимости
-    extras_require={}                       # Доп. зависимости
-)
+if __name__ == '__main__':
+    setup()
