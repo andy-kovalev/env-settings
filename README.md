@@ -15,12 +15,9 @@ env-settings - это Python-модуль для управления настр
 
 # Установка
 ```shell
-pip install git+https://github.com/andy-kovalev/env-settings.git
+pip install env-settings
 ```
-Или из локального репозитория:
-```shell
-pip install /path/to/env_settings
-```
+
 # Использование
 ## Конфигурирование модуля
 ```python
@@ -93,7 +90,7 @@ def param_object_ids_iterator():
 import settings
 print(f"Подключение к {settings.DATABASE_URL}")
 if settings.DEBUG:
-    print(f"Подключение к {settings.TIMEOUT}")
+    print(f"Тайм-аут подключения {settings.TIMEOUT}")
 ```
 ## Генерация .env файла
 ```python
