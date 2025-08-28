@@ -6,6 +6,8 @@
     <option name="PARENT_ENVS" value="true" />
     <option name="SCRIPT_NAME" value="start ./htmlcov/index.html" />
     <option name="PARAMETERS" value="" />
-    <method v="2" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Pytest with coverage" run_configuration_type="tests" />
+    </method>
   </configuration>
 </component>
