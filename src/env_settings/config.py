@@ -3,12 +3,16 @@
 """
 from enum import Enum
 from typing import Union
+from typing import Optional
+
+from logging import Logger, getLogger
 
 
 class ErrorHandling(Enum):
     """Перечисление методов обработки ошибок"""
     EXIT = 'exit'  # Остановить работу программы
     RAISE = 'raise'  # Вызывать исключение
+    LOGGING = 'logging'  # Записать сообщение в logger
     PRINT = 'print'  # Вывести сообщение в консоль
     IGNORE = 'ignore'  # Не выполнять действий
 
@@ -33,40 +37,59 @@ class ErrorHandling(Enum):
 
 class _Config:
     def __init__(self):
-        _msg_prefix = 'settings: Ошибка загрузки настроек! Параметр'
+        _msg_prefix = 'settings:'
+        _err_msg_prefix = f'{_msg_prefix} Ошибка загрузки настроек! Параметр'
         # Параметры по умолчанию
-        self._error_messages = {
-            'required': f'{_msg_prefix} %s должен быть задан!',
-            'integer': f'{_msg_prefix} %s=%s. Должен быть числом!',
-            'float': f'{_msg_prefix} %s=%s. Должен быть дробным числом (с разделителем точка: 0.0)!',
-            'file': f'{_msg_prefix} %s=%s. Не найден указанный файл!',
-            'directory': f'{_msg_prefix} %s=%s. Невозможно создать директорию! %s'
+        self._messages = {
+            'log_value': f'{_msg_prefix} {"{}={}"}',
+            'err_required': f'{_err_msg_prefix} {"{}"} должен быть задан!',
+            'err_integer': f'{_err_msg_prefix} {"{}={}"}. Должен быть числом!',
+            'err_float': f'{_err_msg_prefix} {"{}={}"}. Должен быть дробным числом (с разделителем точка: 0.0)!',
+            'err_file': f'{_err_msg_prefix} {"{}={}"}. Не найден указанный файл!',
+            'err_directory': f'{_err_msg_prefix} {"{}={}"}. Невозможно создать директорию! {"{}"}'
         }
         self._error_handling = ErrorHandling.RAISE
+        self._logger = None
+        self._do_value_logging = False
         self._env_generator_pattern = r'^(?:\s*(?:#.*)?\s*[\r\n]+)*\s*[A-Z0-9_-]+\s*=\s.*?param.*?\(.*?\).*$'
 
     @property
-    def error_messages(self):
-        return self._error_messages
+    def messages(self):
+        return self._messages
 
     @property
     def error_handling(self):
         return self._error_handling
 
     @property
+    def logger(self) -> Union[type[Logger], Logger]:
+        return getLogger(self._logger)
+
+    @property
+    def do_value_logging(self):
+        return self._do_value_logging
+
+    @property
     def env_generator_pattern(self):
         return self._env_generator_pattern
 
-    def configure(self, error_messages: dict = None, error_handling: Union[str, ErrorHandling] = None,
-                  env_generator_pattern: str = None):
+    def configure(self, messages: Optional[dict] = None,
+                  error_handling: Optional[Union[str, ErrorHandling]] = None, logger: Optional[str] = None,
+                  do_value_logging: Optional[bool] = None, env_generator_pattern: Optional[str] = None):
         """Обновление параметров конфигурации"""
-        if error_messages:
-            if not isinstance(error_messages, dict):
-                raise TypeError('error_messages должен быть словарем')
-            self._error_messages.update(error_messages)
+        if messages:
+            if not isinstance(messages, dict):
+                raise TypeError('messages должен быть словарем')
+            self._messages.update(messages)
 
         if error_handling:
             self._error_handling = ErrorHandling.from_value(error_handling)
+
+        if logger:
+            self._logger = logger
+
+        if do_value_logging:
+            self._do_value_logging = do_value_logging
 
         if env_generator_pattern:
             self._env_generator_pattern = env_generator_pattern

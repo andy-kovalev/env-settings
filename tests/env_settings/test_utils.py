@@ -4,18 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from src.env_settings.config import config, ErrorHandling
+from src.env_settings.config import ErrorHandling, config as global_config
 from src.env_settings.utils import (_env_param_error, _create_directory, get_str_env_param, get_int_env_param,
                                     get_float_env_param, get_bool_env_param, get_file_env_param, get_filedir_env_param,
                                     get_value_from_string, get_values_from_file, get_values, endless_param_iterator,
-                                    param_iterator, load_env_params)
-
-
-# Фикстура для сброса конфигурации перед каждым тестом
-@pytest.fixture(autouse=True)
-def reset_config():
-    yield
-    config.reset()
+                                    param_iterator, load_env_params, _get_obfuscate_value)
 
 
 # Фикстура для временной директории
@@ -31,13 +24,13 @@ def tmp_env(monkeypatch, tmp_path):
 
 
 # Тесты для _env_param_error
-@pytest.mark.parametrize('handling, expected',
-                         [(ErrorHandling.EXIT, 'exit'), (ErrorHandling.RAISE, 'raise'), (ErrorHandling.PRINT, 'print'),
-                          (ErrorHandling.IGNORE, 'ignore'), ])
-def test_env_param_error(handling, expected, monkeypatch):
+@pytest.mark.parametrize('handling',
+                         [ErrorHandling.EXIT, ErrorHandling.RAISE, ErrorHandling.LOGGING, ErrorHandling.PRINT,
+                          ErrorHandling.IGNORE])
+def test_env_param_error(handling, monkeypatch):
     """Тестирование обработки ошибок с разными стратегиями"""
     # Мокируем поведение в зависимости от стратегии
-    config.configure(error_handling=handling)
+    global_config.configure(error_handling=handling)
 
     if handling == ErrorHandling.EXIT:
         with pytest.raises(SystemExit, match='Test error'):
@@ -45,6 +38,10 @@ def test_env_param_error(handling, expected, monkeypatch):
     elif handling == ErrorHandling.RAISE:
         with pytest.raises(ValueError, match='Test error'):
             _env_param_error('Test error')
+    elif handling == ErrorHandling.LOGGING:
+        with patch('src.env_settings.utils.config.logger.error') as mock_logger:
+            _env_param_error('Test error')
+            mock_logger.assert_called_once_with('Test error')
     elif handling == ErrorHandling.PRINT:
         with patch('builtins.print') as mock_print:
             _env_param_error('Test error')
@@ -95,9 +92,9 @@ class TestGetParams:
         (tmp_env / 'file.txt').write_text('content')
 
         # Настраиваем сообщения об ошибках
-        config.configure(error_messages={'required': 'Required: %s', 'integer': 'Integer error: %s=%s',
-                                         'float': 'Float error: %s=%s', 'file': 'File error: %s=%s',
-                                         'directory': 'Directory error: %s=%s %s'})
+        global_config.configure(messages={'err_required': 'Required: {}', 'err_integer': 'Integer error: {}={}',
+                                          'err_float': 'Float error: {}={}', 'err_file': 'File error: {}={}',
+                                          'err_directory': 'Directory error: {}={} {}'})
 
     def test_get_str_env_param(self):
         """Получение строкового параметра"""
@@ -170,7 +167,7 @@ class TestGetParams:
             assert new_file.parent.exists()
 
         # Ошибка создания директории для файла
-        config.configure(error_handling=ErrorHandling.PRINT)
+        global_config.configure(error_handling=ErrorHandling.PRINT)
         new_file = tmp_env / 'fail_dir' / 'new_file.txt'
         with patch.dict(os.environ, {'NEW_FILE': str(new_file)}):
             with patch('src.env_settings.utils._create_directory', side_effect=OSError('Permission denied')):
@@ -195,7 +192,7 @@ class TestGetParams:
             assert new_dir.exists()
 
         # Ошибка создания директории
-        config.configure(error_handling=ErrorHandling.PRINT)
+        global_config.configure(error_handling=ErrorHandling.PRINT)
         with patch('src.env_settings.utils._create_directory', side_effect=OSError('Permission denied')) as merr:
             assert get_filedir_env_param('NEW_DIR', dir_mast_exist=True) is None
             merr.assert_called_with(None)
@@ -282,7 +279,7 @@ def test_load_env_params(monkeypatch, tmp_env):
 def test_required_param_handling(monkeypatch):
     """Проверка обработки обязательных параметров"""
     # Настраиваем стратегию RAISE для удобства тестирования
-    config.configure(error_handling=ErrorHandling.RAISE)
+    global_config.configure(error_handling=ErrorHandling.RAISE)
 
     # Для всех типов параметров
     with pytest.raises(ValueError, match='REQUIRED_PARAM'):
@@ -296,3 +293,73 @@ def test_required_param_handling(monkeypatch):
 
     with pytest.raises(ValueError, match='REQUIRED_PARAM'):
         get_bool_env_param('REQUIRED_PARAM', required=True)
+
+
+@pytest.mark.parametrize("input_value, expected",
+                         [("", ""), (None, ""), ("a", "*"), ("ab", "**"), ("abc", "***"), ("abcd", "a***"),
+                          ("abcdefg", "a******"), ("abcdefgh", "a******h"), ("abcdefghi", "a*******i"),
+                          ("abcdefghijklmno", "a*************o"), ("abcdefghijklmnop", "abc**********nop"),
+                          ("abcdefghijklmnopqrstuvwxyz", "abc********************xyz")])
+def test_get_obfuscate_value(input_value, expected):
+    """
+    Тестирование обработки пустой строки и None значения
+    Тестирование обработки коротких строк (менее 4 символов)
+        Тестирование, что короткие строки полностью заменяются звездочками
+    Тестирование обработки строк средней длины (4-7 символов)
+        Тестирование, что для строк 4-7 символов показывается только первый символ"
+    Тестирование обработки длинных строк (8-15 символов)
+        Тестирование, что для строк 8-15 символов показываются первый и последний символы
+    Тестирование обработки очень длинных строк (16+ символов)
+        Тестирование, что для строк 16+ символов показываются первые 3 и последние 3 символа
+    Тестирование сохранения длины строки после обфускации
+    """
+
+    assert _get_obfuscate_value(input_value) == expected
+
+
+@pytest.mark.parametrize("do_value_logging, expected_called", [(False, 0), (True, 1), ])
+def test_logging_toggle(do_value_logging, expected_called):
+    """Тестирование включения/выключения логирования"""
+    global_config.configure(messages={'log_value': 'Parameter {}: {}'}, logger='test_logger',
+                            do_value_logging=do_value_logging)
+
+    # Вызываем функцию с параметром, который существует
+    with patch('src.env_settings.utils.config.logger.debug') as mock_debug:
+        with patch.dict('os.environ', {'TEST_PARAM': 'test_value'}):
+            result = get_str_env_param('TEST_PARAM')
+
+    assert global_config.logger.name == 'test_logger'
+    assert result == 'test_value'
+    assert mock_debug.call_count == expected_called
+
+
+@pytest.mark.parametrize("param_value, log_text, do_obfuscate, expected_result",
+                         [('test_value', None, False, 'test_value'),  # Без обфускации и без log_text
+                          ('test_value', 'custom', False, 'custom'),  # С log_text, но без обфускации
+                          ('test_value', None, True, 'obfuscated'),  # С обфускацией, но без log_text
+                          ('test_value', 'custom', True, 'obfuscated'),  # С обфускацией и log_text
+                          ])
+def test_obfuscate_with_log_text(param_value, log_text, do_obfuscate, expected_result):
+    """Тестирование комбинации параметров log_text и do_obfuscate_log_text"""
+    global_config.configure(do_value_logging=True)
+
+    with patch('src.env_settings.utils._get_obfuscate_value') as mock_obfuscate:
+        mock_obfuscate.return_value = 'obfuscated'
+
+        # Подготавливаем kwargs
+        kwargs = {}
+        if log_text is not None:
+            kwargs['log_text'] = log_text
+        if do_obfuscate:
+            kwargs['do_obfuscate_log_text'] = True
+
+        # Вызываем функцию с параметром, который существует
+        with patch('src.env_settings.utils.config.logger.debug') as mock_debug:
+            with patch.dict('os.environ', {'TEST_PARAM': param_value}):
+                get_str_env_param('TEST_PARAM', **kwargs)
+
+        # Проверяем, что logger.debug был вызван с ожидаемым текстом
+        mock_debug.assert_called_once()
+        call_args = mock_debug.call_args[0]
+        # Ожидаемый текст находится во втором аргументе
+        assert expected_result in str(call_args[0]).split('=')[1]

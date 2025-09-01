@@ -16,12 +16,12 @@ def configure(**kwargs):
 
     :example:
     configure(
-                error_messages={
-                    'required': 'Должен быть задан',
-                    'integer': 'Должен быть числом',
-                    'float': 'Должен быть дробным числом',
-                    'file': 'Не найден файл',
-                    'directory': 'Невозможно создать директорию'},
+                messages={
+                    'err_required': 'Должен быть задан',
+                    'err_integer': 'Должен быть числом',
+                    'err_float': 'Должен быть дробным числом',
+                    'err_file': 'Не найден файл',
+                    'err_directory': 'Невозможно создать директорию'},
                 error_handling = 'exit'
             )
 

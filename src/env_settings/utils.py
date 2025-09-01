@@ -28,6 +28,8 @@ def _env_param_error(msg: str):
         exit(msg)
     elif error_handling == ErrorHandling.RAISE:
         raise ValueError(msg)
+    elif error_handling == ErrorHandling.LOGGING:
+        config.logger.error(msg)
     elif error_handling == ErrorHandling.PRINT:
         print(msg)
 
@@ -49,7 +51,39 @@ def _create_directory(name: str, is_filename: bool = False):
             makedirs(directory)
 
 
-def get_str_env_param(name: str, required: bool = False, default: str = None) -> Optional[str]:
+def _get_obfuscate_value(value: str) -> str:
+    """
+    Обеспечивает обфускацию (сокрытие) переданной строки путем замены части символов на asterisks (*).
+
+    Логика обфускации зависит от длины входной строки:
+    - Пустая строка возвращается как есть
+    - Строки короче 4 символов: все символы заменяются на *
+    - Строки от 4 до 7 символов: показывается только первый символ, остальные заменяются на *
+    - Строки от 8 до 15 символов: показывается первый и последний символ, остальные заменяются на *
+    - Строки от 16 символов: показываются первые 3 и последние 3 символа, остальные заменяются на *
+
+    :param value: str: Входная строка для обфускации
+    :return: str: Обфусцированная строка согласно описанной логике
+    """
+
+    def fill_asterisk(fill_count):
+        return '*' * fill_count
+
+    if not value or len(value) == 0:
+        return ''
+
+    _len_value = len(value)
+    if _len_value < 2 ** 2:
+        return fill_asterisk(len(value))
+    if _len_value < 2 ** 3:
+        return value[:1] + fill_asterisk(len(value) - 1)
+    if _len_value < 2 ** 4:
+        return value[:1] + fill_asterisk(len(value) - 2) + value[-1:]
+
+    return value[:3] + fill_asterisk(len(value) - 3 * 2) + value[-3:]
+
+
+def get_str_env_param(name: str, required: bool = False, default: str = None, **kwargs) -> Optional[str]:
     """
     Получает значение из переменной окружения *name*
 
@@ -59,16 +93,28 @@ def get_str_env_param(name: str, required: bool = False, default: str = None) ->
     :param name: str: Наименование переменной окружения
     :param required: bool, default=False: Обязательность параметра
     :param default: str, optional: Значение по умолчанию
+    :param kwargs:
+        log_text: str: Текст, который будет записан в logger, если включена опция конфигурации do_value_logging
+        do_obfuscate_log_text: bool, default=False: Если True, то в logger, вместо значения, записывается результат \
+        _get_obfuscate_value()
     :return: str or None: Значение переменной окружения *name* или None
+
+    Note: Параметры log_text и do_obfuscate_log_text передаются как keyword-аргументы через **kwargs
     """
     result = getenv(name, default=str(default) if default else None)
+    if config.do_value_logging:
+        log_text = kwargs['log_text'] if 'log_text' in kwargs.keys() else result
+        if 'do_obfuscate_log_text' in kwargs.keys() and kwargs['do_obfuscate_log_text']:
+            log_text = _get_obfuscate_value(log_text)
+        config.logger.debug(config.messages['log_value'].format(name, log_text, ''))
+
     result = None if not result or not result.strip() else result.strip()
     if required and not result:
-        _env_param_error(config.error_messages['required'] % name)
+        _env_param_error(config.messages['err_required'].format(name, '', ''))
     return result
 
 
-def get_int_env_param(name: str, required: bool = False, default: int = None) -> Optional[int]:
+def get_int_env_param(name: str, required: bool = False, default: int = None, **kwargs) -> Optional[int]:
     """
     Получает *int* значение из переменной окружения *name*
 
@@ -79,18 +125,19 @@ def get_int_env_param(name: str, required: bool = False, default: int = None) ->
     :param name: str: Наименование переменной окружения
     :param required: bool, default=False: Обязательность параметра
     :param default: int, optional: Значение по умолчанию
+    :param kwargs: параметры для передачи в :func:`get_str_env_param`
     :return: int or None: Значение переменной окружения *name*
     """
-    result = get_str_env_param(name, required, str(default) if default else None)
+    result = get_str_env_param(name, required, str(default) if default else None, **kwargs)
     try:
         result = None if not result else int(result)
         return result
-    except ValueError:
-        _env_param_error(config.error_messages['integer'] % (name, result))
+    except ValueError as e:
+        _env_param_error(config.messages['err_integer'].format(name, result, str(e)))
         return None
 
 
-def get_float_env_param(name: str, required: bool = False, default: float = None) -> Optional[float]:
+def get_float_env_param(name: str, required: bool = False, default: float = None, **kwargs) -> Optional[float]:
     """
     Получает *float* значение из переменной окружения *name*
 
@@ -101,18 +148,19 @@ def get_float_env_param(name: str, required: bool = False, default: float = None
     :param name: str: Наименование переменной окружения
     :param required: bool, default=False: Обязательность параметра
     :param default: float, optional: Значение по умолчанию
+    :param kwargs: параметры для передачи в :func:`get_str_env_param`
     :return: float or None: Значение переменной окружения *name*
     """
-    result = get_str_env_param(name, required, str(default) if default else None)
+    result = get_str_env_param(name, required, str(default) if default else None, **kwargs)
     try:
         result = None if not result else float(result.replace(',', '.'))
         return result
-    except ValueError:
-        _env_param_error(config.error_messages['float'] % (name, result))
+    except ValueError as e:
+        _env_param_error(config.messages['err_float'].format(name, result, str(e)))
         return None
 
 
-def get_bool_env_param(name: str, required: bool = False, default: bool = False) -> bool:
+def get_bool_env_param(name: str, required: bool = False, default: bool = False, **kwargs) -> bool:
     """
     Получает *boolean* значение из переменной окружения *name*
 
@@ -123,14 +171,15 @@ def get_bool_env_param(name: str, required: bool = False, default: bool = False)
     :param name: str: Наименование переменной окружения
     :param required: bool, default=False: Обязательность параметра
     :param default: optional: Значение по умолчанию
+    :param kwargs: параметры для передачи в :func:`get_str_env_param`
     :return: bool: Значение переменной окружения *name*
     """
-    result = get_str_env_param(name, required, str(default) if default else False)
+    result = get_str_env_param(name, required, str(default) if default else False, **kwargs)
     return True if result and result.lower() in ('true', 'yes', 't', 'y', '1') else False
 
 
 def get_file_env_param(name: str, required: bool = False, default: str = None, file_mast_exist: bool = True,
-                       dir_mast_exist: bool = True) -> Optional[str]:
+                       dir_mast_exist: bool = True, **kwargs) -> Optional[str]:
     """
     Получает значение пути к файлу из переменной окружения *name*
 
@@ -147,14 +196,15 @@ def get_file_env_param(name: str, required: bool = False, default: str = None, f
     :param default: str, optional: Значение по умолчанию
     :param file_mast_exist: bool, default=True: Обязательность существования файла
     :param dir_mast_exist: bool, default=True: Обязательность существования каталога
+    :param kwargs: параметры для передачи в :func:`get_str_env_param`
     :return: str or None: Значение переменной окружения *name*
     """
-    result = get_str_env_param(name, required, default)
+    result = get_str_env_param(name, required, default, **kwargs)
     if file_mast_exist:
         if path.exists(result) and path.isfile(result):
             return result
         else:
-            _env_param_error(config.error_messages['file'] % (name, result))
+            _env_param_error(config.messages['err_file'].format(name, result, ''))
             return None
     else:
         if dir_mast_exist:
@@ -162,13 +212,14 @@ def get_file_env_param(name: str, required: bool = False, default: str = None, f
                 _create_directory(result, is_filename=True)
                 return result
             except OSError as e:
-                _env_param_error(config.error_messages['directory'] % (name, result, str(e)))
+                _env_param_error(config.messages['err_directory'].format(name, result, str(e)))
                 return None
         else:
             return result
 
 
-def get_filedir_env_param(name: str, required: bool = False, default=None, dir_mast_exist=True) -> Optional[str]:
+def get_filedir_env_param(name: str, required: bool = False, default=None,
+                          dir_mast_exist=True, **kwargs) -> Optional[str]:
     """
     Получает значение пути к файловому каталогу из переменной окружения *name*
 
@@ -181,9 +232,10 @@ def get_filedir_env_param(name: str, required: bool = False, default=None, dir_m
     :param required: bool, default=False: Обязательность параметра
     :param default: str, optional: Значение по умолчанию
     :param dir_mast_exist: bool, default=True: Обязательность существования каталога
+    :param kwargs: параметры для передачи в :func:`get_str_env_param`
     :return: str or None: Значение переменной окружения *name*
     """
-    result = get_str_env_param(name, required, default)
+    result = get_str_env_param(name, required, default, **kwargs)
     if dir_mast_exist:
         if path.exists(result) and path.isdir(result):
             return result
@@ -192,7 +244,7 @@ def get_filedir_env_param(name: str, required: bool = False, default=None, dir_m
                 _create_directory(result)
                 return result
             except OSError as e:
-                _env_param_error(config.error_messages['directory'] % (name, result, str(e)))
+                _env_param_error(config.messages['err_directory'].format(name, result, str(e)))
                 return None
     else:
         return result

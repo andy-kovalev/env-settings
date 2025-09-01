@@ -2,14 +2,6 @@ import pytest
 from src.env_settings.config import ErrorHandling, config as global_config
 
 
-@pytest.fixture(autouse=True)
-def reset_config():
-    """Фикстура для изоляции тестов, сбрасывает конфиг после каждого теста"""
-    global_config.reset()
-    yield
-    global_config.reset()
-
-
 # Тесты для класса ErrorHandling
 def test_error_handling_enum_values():
     """Проверка значений перечисления"""
@@ -51,35 +43,35 @@ def test_default_config_values():
     """Проверка значений конфигурации по умолчанию"""
     assert global_config.error_handling == ErrorHandling.RAISE
 
-    error_messages = global_config.error_messages
-    assert 'required' in error_messages
-    assert 'integer' in error_messages
-    assert 'file' in error_messages
-    assert 'directory' in error_messages
+    messages = global_config.messages
+    assert 'err_required' in messages
+    assert 'err_integer' in messages
+    assert 'err_file' in messages
+    assert 'err_directory' in messages
 
     assert global_config.env_generator_pattern == (
         r'^(?:\s*(?:#.*)?\s*[\r\n]+)*\s*[A-Z0-9_-]+\s*=\s.*?param.*?\(.*?\).*$')
 
 
-def test_configure_error_messages():
+def test_configure_messages():
     """Обновление сообщений об ошибках"""
     test_required_message = 'Custom required message'
     test_new_type_message = 'New error type message'
     test_messages = {
-        'required': test_required_message,
+        'err_required': test_required_message,
         'new_type': test_new_type_message
     }
 
     # Частичное обновление
-    global_config.configure(error_messages=test_messages)
+    global_config.configure(messages=test_messages)
 
     # Проверка обновленных значений
-    assert global_config.error_messages['required'] == test_required_message
-    assert global_config.error_messages['new_type'] == test_new_type_message
+    assert global_config.messages['err_required'] == test_required_message
+    assert global_config.messages['new_type'] == test_new_type_message
 
     # Проверка сохранения других значений
-    assert 'integer' in global_config.error_messages
-    assert global_config.error_messages['integer'].startswith('settings: Ошибка загрузки настроек!')
+    assert 'err_integer' in global_config.messages
+    assert global_config.messages['err_integer'].startswith('settings: Ошибка загрузки настроек!')
 
 
 def test_configure_error_handling():
@@ -100,10 +92,10 @@ def test_configure_env_generator_pattern():
     assert global_config.env_generator_pattern == new_pattern
 
 
-def test_configure_invalid_error_messages_type():
-    """Проверка обработки неверного типа для error_messages"""
-    with pytest.raises(TypeError, match='error_messages должен быть словарем'):
-        global_config.configure(error_messages='invalid type')
+def test_configure_invalid_messages_type():
+    """Проверка обработки неверного типа для messages"""
+    with pytest.raises(TypeError, match='messages должен быть словарем'):
+        global_config.configure(messages='invalid type')
 
 
 def test_configure_invalid_error_handling():
@@ -115,7 +107,7 @@ def test_configure_invalid_error_handling():
 def test_reset_config():
     """Проверка сброса конфигурации"""
     # Изменяем конфигурацию
-    global_config.configure(error_messages={'required': 'Custom'}, error_handling='print',
+    global_config.configure(messages={'err_required': 'Custom'}, error_handling='print',
                             env_generator_pattern='new_pattern')
 
     # Сбрасываем
@@ -123,7 +115,7 @@ def test_reset_config():
 
     # Проверяем возврат к значениям по умолчанию
     assert global_config.error_handling == ErrorHandling.RAISE
-    assert global_config.error_messages['required'].startswith('settings:')
+    assert global_config.messages['err_required'].startswith('settings:')
     assert global_config.env_generator_pattern != 'new_pattern'
 
 
@@ -144,14 +136,14 @@ def test_multiple_config_updates():
 def test_partial_configure():
     """Частичное обновление конфигурации"""
     original_pattern = global_config.env_generator_pattern
-    original_messages = global_config.error_messages.copy()
+    original_messages = global_config.messages.copy()
 
     # Обновляем только error_handling
     global_config.configure(error_handling='ignore')
 
     assert global_config.error_handling == ErrorHandling.IGNORE
     assert global_config.env_generator_pattern == original_pattern
-    assert global_config.error_messages == original_messages
+    assert global_config.messages == original_messages
 
 
 # Тесты для синглтона

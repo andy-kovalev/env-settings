@@ -1,4 +1,4 @@
--r requirements.txt
+-r requirements-test.txt
 wheel
 setuptools
 build

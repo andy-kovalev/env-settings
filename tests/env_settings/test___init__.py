@@ -1,13 +1,4 @@
 import pytest
-from unittest.mock import MagicMock
-
-
-@pytest.fixture
-def mock_settings_config(monkeypatch):
-    """Фикстура для мока settings_config"""
-    mock = MagicMock()
-    monkeypatch.setattr('src.env_settings.settings_config', mock)
-    return mock
 
 
 def test_configure_with_empty_params(mock_settings_config):
@@ -23,9 +14,9 @@ def test_configure_calls_settings_config(mock_settings_config):
     from src.env_settings import configure
 
     test_params = {
-        'error_messages': {
-            'required': 'Custom required message',
-            'integer': 'Custom integer message'
+        'messages': {
+            'err_required': 'Custom required message',
+            'err_integer': 'Custom integer message'
         },
         'error_handling': 'custom_handling'
     }
