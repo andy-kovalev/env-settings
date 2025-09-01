@@ -101,7 +101,7 @@ def get_str_env_param(name: str, required: bool = False, default: str = None, **
 
     Note: Параметры log_text и do_obfuscate_log_text передаются как keyword-аргументы через **kwargs
     """
-    result = getenv(name, default=str(default) if default or default == '' else None)
+    result = getenv(name, default=str(default) if default else None)
     if config.do_value_logging:
         log_text = kwargs['log_text'] if 'log_text' in kwargs.keys() else result
         if 'do_obfuscate_log_text' in kwargs.keys() and kwargs['do_obfuscate_log_text']:
