@@ -8,7 +8,7 @@ from src.env_settings.config import ErrorHandling, config as global_config
 from src.env_settings.utils import (_env_param_error, _create_directory, get_str_env_param, get_int_env_param,
                                     get_float_env_param, get_bool_env_param, get_file_env_param, get_filedir_env_param,
                                     get_value_from_string, get_values_from_file, get_values, endless_param_iterator,
-                                    param_iterator, load_env_params, _get_obfuscate_value)
+                                    param_iterator, load_env_params, get_obfuscate_value, get_connect_uri)
 
 
 # Фикстура для временной директории
@@ -314,7 +314,19 @@ def test_get_obfuscate_value(input_value, expected):
     Тестирование сохранения длины строки после обфускации
     """
 
-    assert _get_obfuscate_value(input_value) == expected
+    assert get_obfuscate_value(input_value) == expected
+
+
+@pytest.mark.parametrize(['protocol', 'address', 'port', 'user', 'password', 'resource', 'result'], (
+        ('redis', 'address.local', '', '', '', '5', 'redis://address.local/5'),
+        ('mongodb', 'address.local', '6379', '', '', 'database', 'mongodb://address.local:6379/database'),
+        ('http', 'address.ru', '6379', 'user', '', 'v1/api', 'http://user@address.ru:6379/v1/api'),
+        ('https', 'address.ru', '6379', 'user', 'password', 'v1/api', 'https://user:password@address.ru:6379/v1/api')
+))
+def test_get_connect_uri(protocol, address, port, user, password, resource, result):
+    connect_uri = get_connect_uri(protocol, address, port, user, password, resource)
+
+    assert connect_uri == result
 
 
 @pytest.mark.parametrize("do_value_logging, expected_called", [(False, 0), (True, 1), ])
@@ -343,7 +355,7 @@ def test_obfuscate_with_log_text(param_value, log_text, do_obfuscate, expected_r
     """Тестирование комбинации параметров log_text и do_obfuscate_log_text"""
     global_config.configure(do_value_logging=True)
 
-    with patch('src.env_settings.utils._get_obfuscate_value') as mock_obfuscate:
+    with patch('src.env_settings.utils.get_obfuscate_value') as mock_obfuscate:
         mock_obfuscate.return_value = 'obfuscated'
 
         # Подготавливаем kwargs

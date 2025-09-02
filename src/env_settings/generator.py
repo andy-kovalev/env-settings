@@ -8,11 +8,12 @@ from os import path, walk
 from pathlib import Path
 from re import MULTILINE
 from re import compile
+from typing import Optional
 
 from .config import config
 
 
-def _get_settings_values(settings_file, exclude_params: tuple[str] = None) -> list[str]:
+def _get_settings_values(settings_file, exclude_params: Optional[tuple[str]] = None) -> tuple[str]:
     """
     Извлекает параметры переменных окружения из файла настроек.
 
@@ -36,7 +37,7 @@ def _get_settings_values(settings_file, exclude_params: tuple[str] = None) -> li
 
     :param settings_file: str: Наименование файла настроек (например, 'settings.py')
     :param exclude_params: tuple[str], optional: Кортеж имен параметров, которые следует исключить из результата
-    :return: list[str]: Список строк
+    :return: list[str]: Кортеж строк
     """
     param_pattern = compile(config.env_generator_pattern, MULTILINE)
 
@@ -54,12 +55,12 @@ def _get_settings_values(settings_file, exclude_params: tuple[str] = None) -> li
             if not exclude_params or param_name not in exclude_params:
                 result.append((first_row + '\n' + param_name + '=' + '\n').lstrip())
 
-    return result
+    return tuple(result)
 
 
 def generate_env_file(new_env_filename: str, settings_filename: str = 'settings.py', modules_path: str = '.',
-                      sub_modules_path: str = None, include_sub_modules: tuple[str] = None,
-                      exclude_params: tuple[str] = None):
+                      sub_modules_path: Optional[str] = None, include_sub_modules: Optional[tuple[str]] = None,
+                      exclude_params: Optional[tuple[str]] = None):
     """
     Генерирует .env-файл на основе файлов настроек в указанных директориях.
 
@@ -87,8 +88,9 @@ def generate_env_file(new_env_filename: str, settings_filename: str = 'settings.
     :param settings_filename: str, default='settings.py': Имя файла настроек для поиска
     :param modules_path: str, default='.': Корневая директория для поиска
     :param sub_modules_path: str, optional: Специфическая поддиректория для поиска модулей (например, 'modules')
-    :param include_sub_modules, optional: Кортеж имен подмодулей для включения в поиск (например, ('auth', 'payment'))
-    :param exclude_params, optional: Кортеж имен параметров для исключения из результата
+    :param include_sub_modules: tuple[str], optional: Кортеж имен подмодулей для включения в поиск
+    (например, ('auth', 'payment'))
+    :param exclude_params: tuple[str], optional: Кортеж имен параметров для исключения из результата
     """
     def get_settings(dirname):
         result_values = []

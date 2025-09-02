@@ -1,10 +1,10 @@
 """
 Утилиты для работы с настройками
 """
-
+from array import array
 from os import makedirs, path, getenv
 from sys import maxsize
-from typing import Optional
+from typing import Optional, Union, Iterator
 
 from dotenv import load_dotenv
 
@@ -51,7 +51,7 @@ def _create_directory(name: str, is_filename: bool = False):
             makedirs(directory)
 
 
-def _get_obfuscate_value(value: str) -> str:
+def get_obfuscate_value(value: str) -> str:
     """
     Обеспечивает обфускацию (сокрытие) переданной строки путем замены части символов на asterisks (*).
 
@@ -83,7 +83,75 @@ def _get_obfuscate_value(value: str) -> str:
     return value[:3] + fill_asterisk(len(value) - 3 * 2) + value[-3:]
 
 
-def get_str_env_param(name: str, required: bool = False, default: str = None, **kwargs) -> Optional[str]:
+def get_connect_uri(protocol, address, port=None, user=None, password=None, resource=None) -> str:
+    """
+    Формирует URI для подключения [RFC3986](https://datatracker.ietf.org/doc/html/rfc3986)
+    :param protocol: Протокол подключения (http, redis, mongodb)
+    :param address: Адрес
+    :param port: Порт
+    :param user: Имя пользователя
+    :param password: Пароль пользователя
+    :param resource: Ресурс подключения (name, db_number, db_name)
+    :return: URI подключения к в формате protocol://[user:password@]address[:port]/resource
+    """
+    user_str = f'{user}{f':{password}' if password else ''}@' if user else ''
+    port_str = f':{port}' if port else ''
+
+    return '%s://%s%s%s/%s' % (protocol, user_str, address, port_str, resource) if address else ''
+
+
+def get_value_from_string(delimited_string: str, index: int = 1, separator: str = ';') -> Optional[str]:
+    """
+    Возвращает значение из строки с разделителями по указанному индексу
+
+    :param delimited_string: str: Исходная строка с разделителями
+    :param index: int, defailt=1: Индекс начиная с еденицы
+    :param separator: str, default=';': Разделитель значений
+    :return: str or None: Строковое значение
+    """
+    if delimited_string:
+        values_array = delimited_string.split(separator)
+        if 0 < index <= len(values_array):
+            return values_array[index - 1]
+    return None
+
+
+def get_values_from_file(filename: str, encoding='utf-8') -> list[str]:
+    """
+    Загружает данные из файла в виде набора списка строк
+
+    :param filename: str: Имя файла
+    :param encoding: str, default='utf-8': Кодировка файла
+    :return: list[str]: Список из строк файла
+    """
+    with open(filename, mode='r', encoding=encoding) as file:
+        return file.read().splitlines()
+
+
+def get_values(value: str, default_value: Optional[str] = None, separator: str = ',') -> list[str]:
+    """
+    Определяет тип значения (файл или строка значений) и возвращает список значений
+        - в случае отсутствия значения, возвращается список из одного значения по умолчанию или пустой список
+        - в случае, если указан существующий файл, возвращается список строк из файла
+        - в остальных случаях, возвращается список из значений разделенных *separator*, либо список из одного значения
+
+    :param value: str: Значение
+    :param default_value: str, optional: Значение по умолчанию
+    :param separator: str, default=',': Разделитель значений
+    :return: list[str]: Список значений
+    """
+    if not value:
+        if default_value:
+            return list([default_value])
+        return list([])
+
+    if path.exists(value) and path.isfile(value):
+        return get_values_from_file(value)
+
+    return value.split(separator)
+
+
+def get_str_env_param(name: str, required: bool = False, default: Optional[str] = None, **kwargs) -> Optional[str]:
     """
     Получает значение из переменной окружения *name*
 
@@ -96,7 +164,7 @@ def get_str_env_param(name: str, required: bool = False, default: str = None, **
     :param kwargs:
         log_text: str: Текст, который будет записан в logger, если включена опция конфигурации do_value_logging
         do_obfuscate_log_text: bool, default=False: Если True, то в logger, вместо значения, записывается результат \
-        _get_obfuscate_value()
+        get_obfuscate_value()
     :return: str or None: Значение переменной окружения *name* или None
 
     Note: Параметры log_text и do_obfuscate_log_text передаются как keyword-аргументы через **kwargs
@@ -105,7 +173,7 @@ def get_str_env_param(name: str, required: bool = False, default: str = None, **
     if config.do_value_logging:
         log_text = kwargs['log_text'] if 'log_text' in kwargs.keys() else result
         if 'do_obfuscate_log_text' in kwargs.keys() and kwargs['do_obfuscate_log_text']:
-            log_text = _get_obfuscate_value(log_text)
+            log_text = get_obfuscate_value(log_text)
         config.logger.debug(config.messages['log_value'].format(name, log_text, ''))
 
     result = None if not result or not result.strip() else result.strip()
@@ -114,7 +182,7 @@ def get_str_env_param(name: str, required: bool = False, default: str = None, **
     return result
 
 
-def get_int_env_param(name: str, required: bool = False, default: int = None, **kwargs) -> Optional[int]:
+def get_int_env_param(name: str, required: bool = False, default: Optional[int] = None, **kwargs) -> Optional[int]:
     """
     Получает *int* значение из переменной окружения *name*
 
@@ -137,7 +205,8 @@ def get_int_env_param(name: str, required: bool = False, default: int = None, **
         return None
 
 
-def get_float_env_param(name: str, required: bool = False, default: float = None, **kwargs) -> Optional[float]:
+def get_float_env_param(name: str, required: bool = False,
+                        default: Optional[float] = None, **kwargs) -> Optional[float]:
     """
     Получает *float* значение из переменной окружения *name*
 
@@ -178,7 +247,7 @@ def get_bool_env_param(name: str, required: bool = False, default: bool = False,
     return True if result and result.lower() in ('true', 'yes', 't', 'y', '1') else False
 
 
-def get_file_env_param(name: str, required: bool = False, default: str = None, file_mast_exist: bool = True,
+def get_file_env_param(name: str, required: bool = False, default: Optional[str] = None, file_mast_exist: bool = True,
                        dir_mast_exist: bool = True, **kwargs) -> Optional[str]:
     """
     Получает значение пути к файлу из переменной окружения *name*
@@ -218,8 +287,8 @@ def get_file_env_param(name: str, required: bool = False, default: str = None, f
             return result
 
 
-def get_filedir_env_param(name: str, required: bool = False, default=None,
-                          dir_mast_exist=True, **kwargs) -> Optional[str]:
+def get_filedir_env_param(name: str, required: bool = False, default: Optional[str] = None, dir_mast_exist=True,
+                          **kwargs) -> Optional[str]:
     """
     Получает значение пути к файловому каталогу из переменной окружения *name*
 
@@ -250,82 +319,31 @@ def get_filedir_env_param(name: str, required: bool = False, default=None,
         return result
 
 
-def get_value_from_string(delimited_string: str, index: int = 1, separator: str = ';') -> Optional[str]:
-    """
-    Возвращает значение из строки с разделителями по указанному индексу
-
-    :param delimited_string: str: Исходная строка с разделителями
-    :param index: int, defailt=1: Индекс начиная с еденицы
-    :param separator: str, default=';': Разделитель значений
-    :return: str or None: Строковое значение
-    """
-    if delimited_string:
-        values_array = delimited_string.split(separator)
-        if 0 < index <= len(values_array):
-            return values_array[index - 1]
-    return None
-
-
-def get_values_from_file(filename: str, encoding='utf-8') -> [str]:
-    """
-    Загружает данные из файла в виде списка(статического кортежа) строк
-
-    :param filename: str: Имя файла
-    :param encoding: str, default='utf-8': Кодировка файла
-    :return: [str]: Кортеж из строк файла
-    """
-    with open(filename, mode='r', encoding=encoding) as file:
-        return file.read().splitlines()
-
-
-def get_values(param_value: str, default_value: str = None, separator: str = ',') -> [str]:
-    """
-    Определяет тип значения параметра (файл или строка значений) и возвращает кортеж значений
-        - в случае отсутствия значения, возвращается кортеж из одного значения по умолчанию или пустой кортеж
-        - в случае, если указан существующий файл, возвращается кортеж строк из файла
-        - в остальных случаях, возвращается кортеж из значений разделенных *separator*, либо кортеж из одного значения
-
-    :param param_value: str: Значение параметра
-    :param default_value: str, default=None: Значение по умолчанию
-    :param separator: str, default=',': Разделитель значений
-    :return: [str]: Кортеж значений
-    """
-    if not param_value:
-        if default_value:
-            return [default_value]
-        return []
-
-    if path.exists(param_value) and path.isfile(param_value):
-        return get_values_from_file(param_value)
-
-    return param_value.split(separator)
-
-
-def endless_param_iterator(param_values: list) -> iter:
+def endless_param_iterator(param_values: Union[list[str], tuple[str], array[str]]) -> Iterator[str]:
     """
     Условно "бесконечный" генератор для цикличного перебора значений из указанного списка
 
     После достижения последнего значения в списке, генератор возвращает первое
 
-    :param param_values: list: Список значений
-    :return: iter: Итератор значений
+    :param param_values: Список значений
+    :return: Iterator[str]: Итератор значений
     """
     for i in range(maxsize):
         yield param_values[i % len(param_values)]
 
 
-def param_iterator(param_values: list) -> iter:
+def param_iterator(param_values: Union[list[str], tuple[str], array[str]]) -> Iterator[str]:
     """
     Генератор для перебора значений из указанного списка
 
-    :param param_values: list: Список значений
-    :return: iter: Итератор значений
+    :param param_values: Список значений
+    :return: Iterator[str]: Итератор значений
     """
     for i in range(len(param_values)):
         yield param_values[i]
 
 
-def load_env_params(env_filename: str = None, **kwargs) -> bool:
+def load_env_params(env_filename: Optional[str] = None, **kwargs) -> bool:
     """
     Загружает .env файл, используя `dotenv.load_dotenv()`
 
