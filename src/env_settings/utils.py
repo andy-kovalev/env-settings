@@ -319,7 +319,7 @@ def get_filedir_env_param(name: str, required: bool = False, default: Optional[s
         return result
 
 
-def endless_param_iterator(param_values: Union[list[str], tuple[str], array[str]]) -> Iterator[str]:
+def endless_param_iterator(param_values: Union[list[str], tuple[str], array]) -> Iterator[str]:
     """
     Условно "бесконечный" генератор для цикличного перебора значений из указанного списка
 
@@ -332,7 +332,7 @@ def endless_param_iterator(param_values: Union[list[str], tuple[str], array[str]
         yield param_values[i % len(param_values)]
 
 
-def param_iterator(param_values: Union[list[str], tuple[str], array[str]]) -> Iterator[str]:
+def param_iterator(param_values: Union[list[str], tuple[str], array]) -> Iterator[str]:
     """
     Генератор для перебора значений из указанного списка
 
